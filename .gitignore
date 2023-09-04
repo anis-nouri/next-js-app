@@ -37,4 +37,4 @@ next-env.d.ts
 # Local .terraform directories
 .terraform.lock.hcl
 .terraform
-aws
+
