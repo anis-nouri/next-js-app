@@ -1,3 +1,6 @@
+data "aws_canonical_user_id" "current" {}
+
+
 resource "random_id" "example" {
   byte_length = 8
 }
@@ -32,31 +35,16 @@ resource "aws_s3_bucket" "next_bucket" {
   }
 }
 
-
-
-resource "aws_s3_bucket_policy" "next_bucket_policy" {
+resource "aws_s3_bucket_versioning" "versioning_next_bucket" {
   bucket = aws_s3_bucket.next_bucket.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "s3:GetObject",
-        Effect = "Allow",
-        Principal = {
-          AWS = aws_s3_bucket.next_bucket.arn
-        },
-        Resource = aws_s3_bucket.next_bucket.arn
-      }
-    ]
-  })
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
 resource "aws_s3_bucket" "next_logging_bucket" {
   bucket = local.next_logging_bucket
-
-  acl = "private"
-
+  acl    = "private"
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
@@ -70,11 +58,34 @@ resource "aws_s3_bucket" "next_logging_bucket" {
   }
 }
 
-resource "aws_s3_bucket_versioning" "versioning_next_bucket" {
-  bucket = aws_s3_bucket.next_bucket.id
-  versioning_configuration {
-    status = "Enabled"
-  }
+resource "aws_s3_bucket" "next_logging_bucket" {
+  bucket = "${var.next_bucket_name}-logs"
+  acl    = "private"
+
+  # Add any other necessary bucket configuration here
+}
+
+resource "aws_s3_bucket_policy" "next_logging_bucket_policy" {
+  bucket = aws_s3_bucket.next_logging_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "s3:PutObject",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Resource = "${aws_s3_bucket.next_logging_bucket.arn}/*",
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = aws_cloudfront_distribution.NextDistribution.owner_id
+          }
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_s3_bucket_public_access_block" "next_bucket_public_access" {
