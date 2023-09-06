@@ -58,12 +58,6 @@ resource "aws_s3_bucket" "next_logging_bucket" {
   }
 }
 
-resource "aws_s3_bucket" "next_logging_bucket" {
-  bucket = "${var.next_bucket_name}-logs"
-  acl    = "private"
-
-  # Add any other necessary bucket configuration here
-}
 
 resource "aws_s3_bucket_policy" "next_logging_bucket_policy" {
   bucket = aws_s3_bucket.next_logging_bucket.id
