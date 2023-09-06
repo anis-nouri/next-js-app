@@ -7,10 +7,11 @@ resource "random_id" "example" {
 
 locals {
   next_logging_bucket = "${var.next_bucket_name}logs-${random_id.example.hex}"
+  next_bucket         = "${var.next_bucket_name}-${random_id.example.hex}"
 }
 
 resource "aws_s3_bucket" "next_bucket" {
-  bucket = "${var.next_bucket_name}-${random_id.example.hex}"
+  bucket = local.next_bucket
   acl    = "private"
 
   versioning {
@@ -44,7 +45,6 @@ resource "aws_s3_bucket_versioning" "versioning_next_bucket" {
 
 resource "aws_s3_bucket" "next_logging_bucket" {
   bucket = local.next_logging_bucket
-  acl    = "private"
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
@@ -59,28 +59,38 @@ resource "aws_s3_bucket" "next_logging_bucket" {
 }
 
 
-resource "aws_s3_bucket_policy" "next_logging_bucket_policy" {
+resource "aws_s3_bucket_ownership_controls" "next_logging_bucket_ownership_controls" {
   bucket = aws_s3_bucket.next_logging_bucket.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "s3:PutObject",
-        Effect = "Allow",
-        Principal = {
-          Service = "cloudfront.amazonaws.com"
-        },
-        Resource = "${aws_s3_bucket.next_logging_bucket.arn}/*",
-        Condition = {
-          StringEquals = {
-            "aws:SourceAccount" = aws_cloudfront_distribution.NextDistribution.owner_id
-          }
-        }
-      }
-    ]
-  })
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
 }
+
+resource "aws_s3_bucket_acl" "next_logging_bucket_acl" {
+  depends_on = [aws_s3_bucket_ownership_controls.next_logging_bucket_ownership_controls]
+
+  bucket = aws_s3_bucket.next_logging_bucket.id
+  access_control_policy {
+    grant {
+      grantee {
+        id   = data.aws_canonical_user_id.current.id
+        type = "CanonicalUser"
+      }
+      permission = "WRITE"
+    }
+    grant {
+      grantee {
+        id   = data.aws_canonical_user_id.current.id
+        type = "CanonicalUser"
+      }
+      permission = "READ"
+    }
+    owner {
+      id = data.aws_canonical_user_id.current.id
+    }
+  }
+}
+
 
 resource "aws_s3_bucket_public_access_block" "next_bucket_public_access" {
   bucket = aws_s3_bucket.next_bucket.id
@@ -91,11 +101,22 @@ resource "aws_s3_bucket_public_access_block" "next_bucket_public_access" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_public_access_block" "next_logging_bucket_public_access" {
-  bucket = aws_s3_bucket.next_logging_bucket.id
 
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+resource "aws_iam_policy" "cloudfront_s3_policy" {
+  name        = "CloudFrontS3Policy"
+  description = "IAM policy for CloudFront to access S3 objects"
+
+  # Define policy document
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Id      = "PolicyForCloudFrontPrivateContent",
+    Statement = [
+      {
+        Sid      = "AllowCloudFrontAccess",
+        Effect   = "Allow",
+        Action   = "s3:GetObject",
+        Resource = "arn:aws:s3:::${local.next_bucket}/*",
+      }
+    ],
+  })
 }

@@ -58,7 +58,7 @@ resource "aws_cloudfront_distribution" "NextDistribution" {
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/static/*"
+    path_pattern           = "/public/*"
     target_origin_id       = local.s3_origin_id
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     allowed_methods        = ["GET", "HEAD"]
