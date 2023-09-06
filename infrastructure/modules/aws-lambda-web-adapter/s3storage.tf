@@ -101,22 +101,19 @@ resource "aws_s3_bucket_public_access_block" "next_bucket_public_access" {
   restrict_public_buckets = true
 }
 
+data "aws_iam_policy_document" "next_bucket_policy_document" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.next_bucket.arn}/*"]
 
-resource "aws_iam_policy" "cloudfront_s3_policy" {
-  name        = "CloudFrontS3Policy"
-  description = "IAM policy for CloudFront to access S3 objects"
+    principals {
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.next_origin_access_identity.iam_arn]
+    }
+  }
+}
 
-  # Define policy document
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Id      = "PolicyForCloudFrontPrivateContent",
-    Statement = [
-      {
-        Sid      = "AllowCloudFrontAccess",
-        Effect   = "Allow",
-        Action   = "s3:GetObject",
-        Resource = "arn:aws:s3:::${local.next_bucket}/*",
-      }
-    ],
-  })
+resource "aws_s3_bucket_policy" "next_bucket_policy" {
+  bucket = aws_s3_bucket.next_bucket.id
+  policy = data.aws_iam_policy_document.next_bucket_policy_document.json
 }
