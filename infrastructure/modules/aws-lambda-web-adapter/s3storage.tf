@@ -34,6 +34,8 @@ resource "aws_s3_bucket" "next_bucket" {
   lifecycle {
     prevent_destroy = false
   }
+
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_versioning" "versioning_next_bucket" {
@@ -56,6 +58,7 @@ resource "aws_s3_bucket" "next_logging_bucket" {
   lifecycle {
     prevent_destroy = false
   }
+  force_destroy = true
 }
 
 
