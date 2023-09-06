@@ -1,5 +1,5 @@
 resource "aws_apigatewayv2_api" "main" {
-  name          = "next_APIGateway"
+  name          = var.api_gateway_name
   protocol_type = "HTTP"
 }
 

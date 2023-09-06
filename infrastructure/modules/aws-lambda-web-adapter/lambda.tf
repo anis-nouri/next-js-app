@@ -49,7 +49,7 @@ resource "aws_lambda_function" "nextjs_function" {
   function_name = "next-js-website"
   role          = aws_iam_role.iam_for_lambda.arn
   package_type  = "Image"
-  image_uri     = "055531036085.dkr.ecr.eu-west-1.amazonaws.com/next-js-app:latest"
+  image_uri     = var.lambda_function_image_uri
   runtime       = "nodejs16.x"
   architectures = ["x86_64"]
   memory_size   = 512
@@ -69,5 +69,5 @@ resource "aws_lambda_permission" "api_gw" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.nextjs_function.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${aws_apigatewayv2_api.main.execution_arn}/*/*/{proxy+}"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*/{proxy+}"
 }
